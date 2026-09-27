@@ -2,11 +2,16 @@ import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  applyDarkModeFilter,
   colorToHex,
   isTransparent,
   KEYS,
   normalizeInputColor,
+  removeDarkModeFilter,
+  THEME,
 } from "@excalidraw/common";
+
+import type { Theme } from "@excalidraw/element/types";
 
 import { getShortcutKey } from "../..//shortcut";
 import { useAtom } from "../../editor-jotai";
@@ -20,15 +25,30 @@ import { activeColorPickerSectionAtom } from "./colorPickerUtils";
 import type { ColorPickerType } from "./colorPickerUtils";
 
 /** Native <input type="color"> only accepts opaque #rrggbb. */
-const toColorWheelValue = (color: string): string => {
+const toColorWheelValue = (color: string, theme: Theme): string => {
   if (!color || isTransparent(color)) {
-    return "#000000";
+    // match canvas ink defaults: black stores as black, shows light in dark mode
+    return theme === THEME.DARK
+      ? applyDarkModeFilter("#000000").slice(0, 7).toLowerCase()
+      : "#000000";
   }
   const hex = colorToHex(color);
   if (!hex) {
     return "#000000";
   }
-  return hex.slice(0, 7).toLowerCase();
+  const opaque = hex.slice(0, 7);
+  // native picker shows the on-canvas color (dark-mode filtered), same as swatches
+  const display =
+    theme === THEME.DARK ? applyDarkModeFilter(opaque) : opaque;
+  return display.slice(0, 7).toLowerCase();
+};
+
+/** Convert a native picker color into the storage color Excalidraw expects. */
+const fromColorWheelValue = (color: string, theme: Theme): string => {
+  const normalized = normalizeInputColor(color) || color;
+  return theme === THEME.DARK
+    ? removeDarkModeFilter(normalized)
+    : normalized;
 };
 
 export const ColorInput = ({
@@ -37,12 +57,14 @@ export const ColorInput = ({
   label,
   colorPickerType,
   placeholder,
+  theme,
 }: {
   color: string;
   onChange: (color: string) => void;
   label: string;
   colorPickerType: ColorPickerType;
   placeholder?: string;
+  theme: Theme;
 }) => {
   const editorInterface = useEditorInterface();
   const [innerValue, setInnerValue] = useState(color);
@@ -73,6 +95,14 @@ export const ColorInput = ({
       setInnerValue(value);
     },
     [onChange],
+  );
+
+  const changeColorFromWheel = useCallback(
+    (inputValue: string) => {
+      const storageColor = fromColorWheelValue(inputValue, theme);
+      changeColor(storageColor);
+    },
+    [changeColor, theme],
   );
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -143,13 +173,13 @@ export const ColorInput = ({
             <input
               type="color"
               className="color-picker__color-wheel-input"
-              value={toColorWheelValue(color || innerValue)}
+              value={toColorWheelValue(color || innerValue, theme)}
               aria-label={t("labels.colorWheel")}
               onInput={(event) => {
-                changeColor(event.currentTarget.value);
+                changeColorFromWheel(event.currentTarget.value);
               }}
               onChange={(event) => {
-                changeColor(event.currentTarget.value);
+                changeColorFromWheel(event.currentTarget.value);
               }}
               onClick={(event) => {
                 // keep the stroke/background color popover open
