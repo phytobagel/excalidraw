@@ -1,7 +1,12 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { KEYS, normalizeInputColor } from "@excalidraw/common";
+import {
+  colorToHex,
+  isTransparent,
+  KEYS,
+  normalizeInputColor,
+} from "@excalidraw/common";
 
 import { getShortcutKey } from "../..//shortcut";
 import { useAtom } from "../../editor-jotai";
@@ -13,6 +18,18 @@ import { eyeDropperIcon } from "../icons";
 import { activeColorPickerSectionAtom } from "./colorPickerUtils";
 
 import type { ColorPickerType } from "./colorPickerUtils";
+
+/** Native <input type="color"> only accepts opaque #rrggbb. */
+const toColorWheelValue = (color: string): string => {
+  if (!color || isTransparent(color)) {
+    return "#000000";
+  }
+  const hex = colorToHex(color);
+  if (!hex) {
+    return "#000000";
+  }
+  return hex.slice(0, 7).toLowerCase();
+};
 
 export const ColorInput = ({
   color,
@@ -60,6 +77,7 @@ export const ColorInput = ({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const eyeDropperTriggerRef = useRef<HTMLDivElement>(null);
+  const showEyeDropper = editorInterface.formFactor !== "phone";
 
   useEffect(() => {
     if (inputRef.current) {
@@ -110,16 +128,37 @@ export const ColorInput = ({
           }}
           placeholder={placeholder}
         />
-        {/* TODO reenable on mobile with a better UX */}
-        {editorInterface.formFactor !== "phone" && (
-          <>
-            <div
-              style={{
-                width: "1px",
-                height: "1.25rem",
-                backgroundColor: "var(--default-border-color)",
+        <div
+          style={{
+            width: "1px",
+            height: "1.25rem",
+            backgroundColor: "var(--default-border-color)",
+          }}
+        />
+        <div className="color-picker__input-actions">
+          <label
+            className="color-picker__color-wheel"
+            title={t("labels.colorWheel")}
+          >
+            <input
+              type="color"
+              className="color-picker__color-wheel-input"
+              value={toColorWheelValue(color || innerValue)}
+              aria-label={t("labels.colorWheel")}
+              onInput={(event) => {
+                changeColor(event.currentTarget.value);
+              }}
+              onChange={(event) => {
+                changeColor(event.currentTarget.value);
+              }}
+              onClick={(event) => {
+                // keep the stroke/background color popover open
+                event.stopPropagation();
               }}
             />
+          </label>
+          {/* TODO reenable eyedropper on mobile with a better UX */}
+          {showEyeDropper && (
             <div
               ref={eyeDropperTriggerRef}
               className={clsx("excalidraw-eye-dropper-trigger", {
@@ -142,8 +181,8 @@ export const ColorInput = ({
             >
               {eyeDropperIcon}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
       {errorMessage && (
         <div className="color-picker__error-message" role="alert">
