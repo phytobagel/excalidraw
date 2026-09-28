@@ -5,9 +5,32 @@ import { isExcalidrawPlusSignedUser } from "../app_constants";
 
 import { DebugFooter, isVisualDebuggerEnabled } from "./DebugCanvas";
 import { EncryptedIcon } from "./EncryptedIcon";
+import { JoeappSocIcon } from "./JoeappSocIcon";
+
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
+function isJoeappScratchpadEmbed(): boolean {
+  try {
+    const url = new URL(window.location.href);
+    return (
+      url.searchParams.get("embed") === "joeapp" ||
+      url.pathname.startsWith("/excalidraw")
+    );
+  } catch {
+    return false;
+  }
+}
 
 export const AppFooter = React.memo(
-  ({ onChange }: { onChange: () => void }) => {
+  ({
+    onChange,
+    excalidrawAPI,
+  }: {
+    onChange: () => void;
+    excalidrawAPI?: ExcalidrawImperativeAPI | null;
+  }) => {
+    const joeappEmbed = isJoeappScratchpadEmbed();
+
     return (
       <Footer>
         <div
@@ -18,7 +41,11 @@ export const AppFooter = React.memo(
           }}
         >
           {isVisualDebuggerEnabled() && <DebugFooter onChange={onChange} />}
-          {!isExcalidrawPlusSignedUser && <EncryptedIcon />}
+          {joeappEmbed ? (
+            <JoeappSocIcon excalidrawAPI={excalidrawAPI ?? null} />
+          ) : (
+            !isExcalidrawPlusSignedUser && <EncryptedIcon />
+          )}
         </div>
       </Footer>
     );

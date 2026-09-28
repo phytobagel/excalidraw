@@ -101,7 +101,6 @@ import Collab, {
 } from "./collab/Collab";
 import { AppFooter } from "./components/AppFooter";
 import { AppMainMenu } from "./components/AppMainMenu";
-import { AppWelcomeScreen } from "./components/AppWelcomeScreen";
 import {
   ExportToExcalidrawPlus,
   exportToExcalidrawPlus,
@@ -193,7 +192,12 @@ if (window.self !== window.top) {
   try {
     const parentUrl = new URL(document.referrer);
     const currentUrl = new URL(window.location.href);
-    if (parentUrl.origin === currentUrl.origin) {
+    // JoeAPP Scratchpad mounts this build at /excalidraw/ same-origin; that is
+    // intentional embedding, not recursive self-embedding of the full app.
+    const joeappScratchpadEmbed =
+      currentUrl.pathname.startsWith("/excalidraw") ||
+      currentUrl.searchParams.get("embed") === "joeapp";
+    if (parentUrl.origin === currentUrl.origin && !joeappScratchpadEmbed) {
       isSelfEmbedding = true;
     }
   } catch (error) {
@@ -1034,10 +1038,6 @@ const ExcalidrawWrapper = () => {
           theme={appTheme}
           refresh={() => forceRefresh((prev) => !prev)}
         />
-        <AppWelcomeScreen
-          onCollabDialogOpen={onCollabDialogOpen}
-          isCollabEnabled={!isCollabDisabled}
-        />
         <OverwriteConfirmDialog>
           <OverwriteConfirmDialog.Actions.ExportToImage />
           <OverwriteConfirmDialog.Actions.SaveToDisk />
@@ -1058,7 +1058,10 @@ const ExcalidrawWrapper = () => {
             </OverwriteConfirmDialog.Action>
           )}
         </OverwriteConfirmDialog>
-        <AppFooter onChange={() => excalidrawAPI?.refresh()} />
+        <AppFooter
+          onChange={() => excalidrawAPI?.refresh()}
+          excalidrawAPI={excalidrawAPI}
+        />
         {excalidrawAPI && <AIComponents excalidrawAPI={excalidrawAPI} />}
 
         <TTDDialogTrigger />
