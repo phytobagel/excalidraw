@@ -29,6 +29,8 @@ import {
   CURSOR_TYPE,
   DEFAULT_STROKE_STREAMLINE,
   DEFAULT_STROKE_STREAMLINE_PRECISE,
+  FREEDRAW_FINALIZE_SIMPLIFY_TOLERANCE,
+  FREEDRAW_POINT_MIN_SCREEN_DISTANCE,
   DEFAULT_TRANSFORM_HANDLE_SPACING,
   DEFAULT_VERTICAL_ALIGN,
   DRAGGING_THRESHOLD,
@@ -264,6 +266,8 @@ import {
   getBindingStrategyForDraggingBindingElementEndpoints,
   isNonDeletedElement,
   DEFAULT_BOUND_TEXT_LABEL_POSITION,
+  shouldKeepFreedrawPoint,
+  simplifyFreedrawStroke,
 } from "@excalidraw/element";
 
 import type { GlobalPoint, LocalPoint, Radians } from "@excalidraw/math";
@@ -680,6 +684,8 @@ class App extends React.Component<AppProps, AppState> {
   public files: BinaryFiles = {};
   public imageCache: AppClassProperties["imageCache"] = new Map();
   private iFrameRefs = new Map<ExcalidrawElement["id"], HTMLIFrameElement>();
+  /** Coalesce freedraw pointermoves to one React paint per animation frame. */
+  private freedrawRenderRaf: number | null = null;
   /**
    * Indicates whether the embeddable's url has been validated for rendering.
    * If value not set, indicates that the validation is pending.
@@ -11396,11 +11402,11 @@ class App extends React.Component<AppProps, AppState> {
           const dx = pointerCoords.x - newElement.x;
           const dy = pointerCoords.y - newElement.y;
 
-          const lastPoint = points.length > 0 && points[points.length - 1];
-          const discardPoint =
-            lastPoint && lastPoint[0] === dx && lastPoint[1] === dy;
-
-          if (!discardPoint) {
+          const lastPoint =
+            points.length > 0 ? points[points.length - 1] : undefined;
+          const minSceneDistance =
+            FREEDRAW_POINT_MIN_SCREEN_DISTANCE / this.state.zoom.value;
+          if (shouldKeepFreedrawPoint(lastPoint, dx, dy, minSceneDistance)) {
             const pressures = newElement.simulatePressure
               ? newElement.pressures
               : [...newElement.pressures, event.pressure];
@@ -11417,9 +11423,18 @@ class App extends React.Component<AppProps, AppState> {
               },
             );
 
-            this.setState({
-              newElement,
-            });
+            // Pen tablets fire many moves per frame; one setState/paint is enough.
+            if (this.freedrawRenderRaf == null) {
+              this.freedrawRenderRaf = this.ownerWindow.requestAnimationFrame(
+                () => {
+                  this.freedrawRenderRaf = null;
+                  const active = this.state.newElement;
+                  if (active?.type === "freedraw") {
+                    this.setState({ newElement: active });
+                  }
+                },
+              );
+            }
           }
         } else if (isLinearElement(newElement) && !newElement.isDeleted) {
           pointerDownState.drag.hasOccurred = true;
@@ -11883,6 +11898,11 @@ class App extends React.Component<AppProps, AppState> {
       );
 
       if (newElement?.type === "freedraw") {
+        if (this.freedrawRenderRaf != null) {
+          this.ownerWindow.cancelAnimationFrame(this.freedrawRenderRaf);
+          this.freedrawRenderRaf = null;
+        }
+
         const pointerCoords = viewportCoordsToSceneCoords(
           childEvent,
           this.state,
@@ -11902,9 +11922,19 @@ class App extends React.Component<AppProps, AppState> {
           ? []
           : [...newElement.pressures, childEvent.pressure];
 
-        this.scene.mutateElement(newElement, {
+        const withEndpoint = {
           points: [...points, pointFrom<LocalPoint>(dx, dy)],
           pressures,
+        };
+        const simplified = simplifyFreedrawStroke(
+          withEndpoint.points,
+          withEndpoint.pressures,
+          FREEDRAW_FINALIZE_SIMPLIFY_TOLERANCE,
+        );
+
+        this.scene.mutateElement(newElement, {
+          points: simplified.points,
+          pressures: newElement.simulatePressure ? [] : simplified.pressures,
         });
 
         this.actionManager.executeAction(actionFinalize);
