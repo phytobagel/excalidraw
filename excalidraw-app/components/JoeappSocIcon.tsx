@@ -5,6 +5,7 @@ import {
   getNonDeletedElements,
   MIME_TYPES,
 } from "@excalidraw/excalidraw";
+import { getSelectedElements } from "@excalidraw/element";
 import { getDataURL } from "@excalidraw/excalidraw/data/blob";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
@@ -23,14 +24,24 @@ export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
       return;
     }
 
-    const elements = getNonDeletedElements(excalidrawAPI.getSceneElements());
-    if (!elements.length) {
+    const appState = excalidrawAPI.getAppState();
+    const allElements = getNonDeletedElements(
+      excalidrawAPI.getSceneElements(),
+    );
+    if (!allElements.length) {
       window.alert("Draw something on the scratchpad first.");
       return;
     }
 
+    // When something is highlighted, export only that selection (plus bound
+    // text / frame children). Otherwise export the whole drawing.
+    const selectedElements = getSelectedElements(allElements, appState, {
+      includeBoundTextElement: true,
+      includeElementsInFrames: true,
+    });
+    const elements = selectedElements.length ? selectedElements : allElements;
+
     try {
-      const appState = excalidrawAPI.getAppState();
       const blob = await exportToBlob({
         elements,
         appState: {
@@ -54,6 +65,7 @@ export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
           source: MESSAGE_SOURCE,
           type: MESSAGE_TYPE,
           imageDataUrl,
+          selectionOnly: selectedElements.length > 0,
         },
         window.location.origin,
       );
@@ -67,13 +79,16 @@ export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
     <button
       type="button"
       className="encrypted-icon tooltip joeapp-soc-icon"
-      aria-label="Parse scratchpad into inbox (SOC)"
-      title="Parse scratchpad into inbox"
+      aria-label="Parse selection or scratchpad into inbox (SOC)"
+      title="Parse selection or drawing into inbox"
       onClick={() => {
         void onClick();
       }}
     >
-      <Tooltip label="Parse drawing into inbox items (SOC)" long={true}>
+      <Tooltip
+        label="Parse selection (or whole drawing) into inbox items (SOC)"
+        long={true}
+      >
         {brainIcon}
       </Tooltip>
     </button>
