@@ -7,16 +7,20 @@ When Excalidraw is embedded in JoeAPP Scratchpad (`?embed=joeapp` or `/excalidra
 1. Click exports a JPEG (`maxWidthOrHeight: 1600`):
    - If elements are selected (highlighted), only those elements are exported (including bound text and frame children).
    - If nothing is selected, the whole drawing is exported.
-2. Posts `{ source: "joeapp-excalidraw", type: "scratchpad-soc", imageDataUrl, selectionOnly }` to the parent window (same origin). `selectionOnly` is `true` when a selection was used.
-3. JoeAPP listens and runs the Journal → SOC parse/review/route flow against that image.
+2. Posts `{ source: "joeapp-excalidraw", type: "scratchpad-soc", imageDataUrl, selectionOnly, sourceElementIds }` to the parent window (same origin). `selectionOnly` is `true` when a selection was used. `sourceElementIds` lists the exported element ids so JoeAPP can delete them after a conversion.
+3. JoeAPP listens and runs the Scratchpad AI chooser (image→text, textbox, diagram, or SOC).
 
-### Insert text from parent
+### Parent → iframe messages
 
-When JoeAPP chooses **Create textbox from image**, the parent posts:
+All from `window.parent`, same origin, `{ source: "joeapp-parent", ... }`:
 
-`{ source: "joeapp-parent", type: "scratchpad-insert-text", text }`
+| `type` | Payload | Effect |
+|--------|---------|--------|
+| `scratchpad-insert-text` | `text`, `deleteSourceIds` | Delete source elements, insert a selected text element at viewport center |
+| `scratchpad-insert-diagram` | `mermaid`, `deleteSourceIds` | Delete source elements, parse Mermaid → Excalidraw elements at viewport center |
+| `scratchpad-delete-source` | `deleteSourceIds` | Delete source elements only (image→text / SOC finish) |
 
-(same origin, from `window.parent`). The icon listens and inserts a selected text element at the visible viewport center.
+Helpers live in `joeappScratchpadConvert.ts`. Rebuild with millsAPP `npm run excalidraw:build`.
 
 Outside JoeAPP embeds, the original encryption shield link is unchanged.
 
@@ -25,5 +29,6 @@ Outside JoeAPP embeds, the original encryption shield link is unchanged.
 | Piece | Location |
 |-------|----------|
 | Icon button | `excalidraw-app/components/JoeappSocIcon.tsx` |
+| Convert / delete helpers | `excalidraw-app/components/joeappScratchpadConvert.ts` |
 | Footer swap | `excalidraw-app/components/AppFooter.tsx` |
 | Parent handler | millsAPP `src/public/scratchpad-soc.js` |

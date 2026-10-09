@@ -3,11 +3,8 @@ import { useEffect } from "react";
 import { Tooltip } from "@excalidraw/excalidraw/components/Tooltip";
 import { brainIcon } from "@excalidraw/excalidraw/components/icons";
 import {
-  CaptureUpdateAction,
-  convertToExcalidrawElements,
   exportToBlob,
   getNonDeletedElements,
-  getVisibleSceneBounds,
   MIME_TYPES,
 } from "@excalidraw/excalidraw";
 import { getSelectedElements } from "@excalidraw/element";
@@ -15,39 +12,22 @@ import { getDataURL } from "@excalidraw/excalidraw/data/blob";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
+import {
+  deleteSourceElements,
+  insertMermaidReplacingSource,
+  insertTextboxReplacingSource,
+} from "./joeappScratchpadConvert";
+
 const MESSAGE_SOURCE = "joeapp-excalidraw";
 const MESSAGE_TYPE = "scratchpad-soc";
 const PARENT_SOURCE = "joeapp-parent";
 const INSERT_TEXT_TYPE = "scratchpad-insert-text";
+const INSERT_DIAGRAM_TYPE = "scratchpad-insert-diagram";
+const DELETE_SOURCE_TYPE = "scratchpad-delete-source";
 
 type Props = {
   excalidrawAPI: ExcalidrawImperativeAPI | null;
 };
-
-function insertTextbox(api: ExcalidrawImperativeAPI, text: string) {
-  const appState = api.getAppState();
-  const [minX, minY, maxX, maxY] = getVisibleSceneBounds(appState);
-  const x = minX + (maxX - minX) / 2;
-  const y = minY + (maxY - minY) / 2;
-  const [textElement] = convertToExcalidrawElements([
-    {
-      type: "text",
-      x,
-      y,
-      text,
-    },
-  ]);
-  if (!textElement) {
-    throw new Error("Could not create text element.");
-  }
-  api.updateScene({
-    elements: [...api.getSceneElements(), textElement],
-    appState: {
-      selectedElementIds: { [textElement.id]: true },
-    },
-    captureUpdate: CaptureUpdateAction.IMMEDIATELY,
-  });
-}
 
 export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
   useEffect(() => {
@@ -63,22 +43,48 @@ export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
         return;
       }
       const data = event.data;
-      if (
-        !data ||
-        data.source !== PARENT_SOURCE ||
-        data.type !== INSERT_TEXT_TYPE
-      ) {
+      if (!data || data.source !== PARENT_SOURCE) {
         return;
       }
-      const text = String(data.text || "").trim();
-      if (!text) {
-        console.warn("Scratchpad insert-text: missing text.");
-        return;
-      }
+
+      const type = String(data.type || "");
       try {
-        insertTextbox(excalidrawAPI, text);
+        if (type === INSERT_TEXT_TYPE) {
+          const text = String(data.text || "").trim();
+          if (!text) {
+            console.warn("Scratchpad insert-text: missing text.");
+            return;
+          }
+          insertTextboxReplacingSource(
+            excalidrawAPI,
+            text,
+            data.deleteSourceIds,
+          );
+          return;
+        }
+        if (type === INSERT_DIAGRAM_TYPE) {
+          const mermaid = String(data.mermaid || "").trim();
+          if (!mermaid) {
+            console.warn("Scratchpad insert-diagram: missing mermaid.");
+            return;
+          }
+          void insertMermaidReplacingSource(
+            excalidrawAPI,
+            mermaid,
+            data.deleteSourceIds,
+          ).catch((error) => {
+            console.warn(
+              "Scratchpad insert-diagram: could not add diagram.",
+              error,
+            );
+          });
+          return;
+        }
+        if (type === DELETE_SOURCE_TYPE) {
+          deleteSourceElements(excalidrawAPI, data.deleteSourceIds);
+        }
       } catch (error) {
-        console.warn("Scratchpad insert-text: could not add textbox.", error);
+        console.warn("Scratchpad parent message failed.", type, error);
       }
     };
 
@@ -108,6 +114,7 @@ export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
       includeElementsInFrames: true,
     });
     const elements = selectedElements.length ? selectedElements : allElements;
+    const sourceElementIds = elements.map((el) => el.id);
 
     try {
       const blob = await exportToBlob({
@@ -134,6 +141,7 @@ export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
           type: MESSAGE_TYPE,
           imageDataUrl,
           selectionOnly: selectedElements.length > 0,
+          sourceElementIds,
         },
         window.location.origin,
       );
