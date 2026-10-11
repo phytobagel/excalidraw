@@ -126,9 +126,21 @@ export const JoeappSocIcon = ({ excalidrawAPI }: Props) => {
         },
         files: excalidrawAPI.getFiles(),
         mimeType: MIME_TYPES.jpg,
+        quality: 0.85,
         maxWidthOrHeight: 1600,
       });
-      const imageDataUrl = await getDataURL(blob);
+      // Some browsers leave blob.type empty; FileReader then emits data:;base64,...
+      // which JoeAPP rejects. Force the JPEG MIME before converting.
+      const jpegBlob =
+        blob.type === MIME_TYPES.jpg
+          ? blob
+          : new Blob([blob], { type: MIME_TYPES.jpg });
+      const imageDataUrl = await getDataURL(jpegBlob);
+      if (!/^data:image\/jpe?g(?:;[^,]*)?;base64,/i.test(imageDataUrl)) {
+        throw new Error(
+          `Export produced unexpected data URL (${imageDataUrl.slice(0, 48) || "empty"}).`,
+        );
+      }
 
       if (window.parent === window) {
         console.warn("Scratchpad SOC: not embedded; nowhere to send the image.");

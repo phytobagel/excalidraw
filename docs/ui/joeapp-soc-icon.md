@@ -4,7 +4,7 @@ When Excalidraw is embedded in JoeAPP Scratchpad (`?embed=joeapp` or `/excalidra
 
 ## Behavior
 
-1. Click exports a JPEG (`maxWidthOrHeight: 1600`):
+1. Click exports a JPEG (`maxWidthOrHeight: 1600`, quality `0.85`). The blob MIME is forced to `image/jpeg` before `getDataURL` so browsers that leave `blob.type` empty do not emit invalid `data:;base64,...` URLs:
    - If elements are selected (highlighted), only those elements are exported (including bound text and frame children).
    - If nothing is selected, the whole drawing is exported.
 2. Posts `{ source: "joeapp-excalidraw", type: "scratchpad-soc", imageDataUrl, selectionOnly, sourceElementIds }` to the parent window (same origin). `selectionOnly` is `true` when a selection was used. `sourceElementIds` lists the exported element ids so JoeAPP can delete them after a conversion.
