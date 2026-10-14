@@ -62,6 +62,7 @@ export const MobileMenu = ({
     WelcomeScreenCenterTunnel,
     MainMenuTunnel,
     DefaultSidebarTriggerTunnel,
+    FooterCenterTunnel,
   } = useTunnels();
   const renderAppTopBar = () => {
     if (appState.openDialog?.name === "elementLinkSelector") {
@@ -70,6 +71,8 @@ export const MobileMenu = ({
 
     const topRightUI = (
       <div className="excalidraw-ui-top-right">
+        {/* Phone UI skips desktop Footer; still show FooterCenter (JoeAPP AI). */}
+        <FooterCenterTunnel.Out />
         {renderTopRightUI?.(true, appState) ??
           (!appState.viewModeEnabled && (
             <>

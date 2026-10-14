@@ -1,5 +1,8 @@
 // time constants (ms)
-export const SAVE_TO_LOCAL_STORAGE_TIMEOUT = 300;
+// Pen handwriting finishes many short strokes quickly; 300ms saves of a growing
+// scene block the main thread. A slightly longer debounce keeps recovery snappy
+// without stringifying after every lift.
+export const SAVE_TO_LOCAL_STORAGE_TIMEOUT = 800;
 export const INITIAL_SCENE_UPDATE_TIMEOUT = 5000;
 export const FILE_UPLOAD_TIMEOUT = 300;
 export const LOAD_IMAGES_TIMEOUT = 500;

@@ -604,3 +604,17 @@ export const MOBILE_ACTION_BUTTON_BG = {
 
 export const DEFAULT_STROKE_STREAMLINE = 0.5;
 export const DEFAULT_STROKE_STREAMLINE_PRECISE = 0.2;
+
+/**
+ * Minimum on-screen distance (CSS px) between freedraw samples. Converted to
+ * scene units via `/ zoom` at capture time so dense pen tablets don't enqueue
+ * near-duplicate points (each sample regenerates the perfect-freehand outline).
+ */
+export const FREEDRAW_POINT_MIN_SCREEN_DISTANCE = 0.75;
+
+/**
+ * Ramer–Douglas–Peucker tolerance (scene units) applied when a freedraw stroke
+ * is lifted. Shrinks stored points so later static-canvas blits and localStorage
+ * saves stay cheap after handwriting a few sentences.
+ */
+export const FREEDRAW_FINALIZE_SIMPLIFY_TOLERANCE = 0.45;
