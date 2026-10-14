@@ -1,6 +1,6 @@
 # JoeAPP Scratchpad SOC icon
 
-When Excalidraw is embedded in JoeAPP Scratchpad (`?embed=joeapp` or `/excalidraw/`), the bottom-right encryption **shield** is replaced by a **brain / AI** button.
+When Excalidraw is embedded in JoeAPP Scratchpad (`?embed=joeapp` or `/excalidraw/`), the encryption **shield** is replaced by a **brain / AI** button (desktop: bottom-right footer; phone: top-right, because phone UI does not mount the desktop footer).
 
 ## Behavior
 
@@ -31,4 +31,5 @@ Outside JoeAPP embeds, the original encryption shield link is unchanged.
 | Icon button | `excalidraw-app/components/JoeappSocIcon.tsx` |
 | Convert / delete helpers | `excalidraw-app/components/joeappScratchpadConvert.ts` |
 | Footer swap | `excalidraw-app/components/AppFooter.tsx` |
+| Phone FooterCenter host | `packages/excalidraw/components/MobileMenu.tsx` |
 | Parent handler | millsAPP `src/public/scratchpad-soc.js` |

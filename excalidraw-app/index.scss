@@ -29,6 +29,27 @@
     }
   }
 
+  // Phone top-right hosts FooterCenter (JoeAPP AI); keep icon tappable and aligned.
+  &.excalidraw--mobile .excalidraw-ui-top-right {
+    .footer-center {
+      margin: 0;
+    }
+
+    .encrypted-icon {
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.25rem;
+      min-height: 2.25rem;
+
+      svg {
+        width: 1.35rem;
+        height: 1.35rem;
+      }
+    }
+  }
+
   .dropdown-menu-container {
     .dropdown-menu-item {
       &.active-collab {
